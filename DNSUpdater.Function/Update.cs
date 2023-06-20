@@ -19,7 +19,7 @@ namespace DNSUpdater.Function
         private readonly IDnsService service;
         private readonly ILogger<Update> logger;
         private readonly List<string> tokenList;
-        private readonly string[] validKeys = new string[] { "hostname", "myip", "myipv6", "system" };
+        private readonly string[] validKeys = new string[] { "hostname", "txt", "system" };
         public Update(IDnsServiceFactory serviceFactory, IConfiguration config, ILogger<Update> logger)
         {
             this.service = serviceFactory.GetDnsServiceAsync();
@@ -42,8 +42,7 @@ namespace DNSUpdater.Function
             int ttl = 3600;
             string agent = req.Headers["User-Agent"];
             string hostname = req.Query["hostname"];
-            string ipv4 = req.Query["myip"];
-            string ipv6 = req.Query["myipv6"];
+            string txtRecord = req.Query["txt"];
             string system = req.Query["system"];
             string token = req.Headers["Authorization"]; //For "Basic" authentication the credentials are constructed by first combining the username and the password with a colon (aladdin:opensesame), and then by encoding the resulting string in base64 (YWxhZGRpbjpvcGVuc2VzYW1l).
 
@@ -57,7 +56,7 @@ namespace DNSUpdater.Function
             }
 
             if (string.IsNullOrWhiteSpace(hostname) ||
-                (string.IsNullOrWhiteSpace(ipv4) && string.IsNullOrWhiteSpace(ipv6)) ||
+                (string.IsNullOrWhiteSpace(txtRecord) ||
                 string.IsNullOrWhiteSpace(token) ||
                 string.IsNullOrWhiteSpace(agent))
             {
@@ -66,9 +65,9 @@ namespace DNSUpdater.Function
                     logger.LogWarning("Query parameter \"hostname\" is empty.");
                 }
 
-                if (string.IsNullOrWhiteSpace(ipv4) && string.IsNullOrWhiteSpace(ipv6))
+                if (string.IsNullOrWhiteSpace(txtRecord))
                 {
-                    logger.LogWarning("Query parameter \"myip\" and \"myipv6\" are empty.");
+                    logger.LogWarning("Query parameter \"txt\" are empty.");
                 }
 
                 if (string.IsNullOrWhiteSpace(system))
@@ -85,7 +84,7 @@ namespace DNSUpdater.Function
             }
 
             this.logger.LogDebug(
-                $"request details:	hostname: {hostname}	ip: {ipv4}	ipv6: {ipv6}	token: {token}	agent: {agent}	system: {system}");
+                $"request details:	hostname: {hostname}	txt: {txtRecord}	token: {token}	agent: {agent}	system: {system}");
 
             token = token.Replace("Basic ", "");
             if (!tokenList.Contains(token))
@@ -97,36 +96,19 @@ namespace DNSUpdater.Function
 
             try
             {
-                UpdateStatus resulterv4 = UpdateStatus.nochg;
-                UpdateStatus resulterv6 = UpdateStatus.nochg;
-                if (!string.IsNullOrWhiteSpace(ipv4))
+                UpdateStatus resulterTxt = UpdateStatus.nochg;
+                if (!string.IsNullOrWhiteSpace(txtRecord))
                 {
-                    logger.LogInformation($"Updating hostname: {hostname}\tip: {ipv4}");
-                    var result = await this.service.UpdateARecord(hostname, ipv4, ttl);
-                    resulterv4 = result;
+                    logger.LogInformation($"Updating txt: {hostname}\ttxt: {txtRecord}");
+                    var result = await this.service.UpdateTXTRecord(hostname, txtRecord, ttl);
+                    resulterTxt = result;
                 }
 
-                if (!string.IsNullOrWhiteSpace(ipv6))
-                {
-                    logger.LogInformation($"Updating hostname: {hostname}\tipv6: {ipv6}");
-                    var result = await this.service.UpdateAAAARecord(hostname, ipv6, ttl);
-                    resulterv6 = result;
-                }
-
-                if (resulterv4 == UpdateStatus.good || resulterv6  == UpdateStatus.good)
+                if (resulterTxt  == UpdateStatus.good)
                 {
                     return new OkObjectResult(UpdateStatus.good.ToString());
-                } else if (resulterv4 == UpdateStatus.nochg && resulterv6 == UpdateStatus.nochg)
-                {
-                    return new OkObjectResult(UpdateStatus.nochg.ToString());
-                } else if (resulterv4 == UpdateStatus.badauth || resulterv6 == UpdateStatus.badauth)
-                {
-                    return new ForbidResult(UpdateStatus.badauth.ToString());
-                } else if (resulterv4 == UpdateStatus.invalidinput || resulterv6 == UpdateStatus.invalidinput)
-                {
-                    return new UnprocessableEntityObjectResult(UpdateStatus.invalidinput.ToString());
                 } else {
-                    return new ConflictObjectResult(resulterv4.ToString());
+                    return new ConflictObjectResult(resulterTxt.ToString());
                 }
             }
             catch (Exception e)
