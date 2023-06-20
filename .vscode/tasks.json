@@ -36,6 +36,16 @@
                 "${workspaceFolder}/DNSUpdater.Console/DNSUpdater.Console.csproj"
             ],
             "problemMatcher": "$msCompile"
+        },
+        {
+            "type": "func",
+            "label": "func: host start",
+            "command": "host start",
+            "problemMatcher": "$func-python-watch",
+            "isBackground": true,
+            "options": {
+                "cwd": "${workspaceFolder}/DNSUpdater.Function"
+            }
         }
     ]
 }

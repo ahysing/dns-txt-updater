@@ -63,13 +63,13 @@ namespace DNSUpdater.Library.Services
                 SetupZone();
             }
 
-            var domain = DisectFqdn(fqdn);
             try
             {
                 var response =  this.client.GetResourceGroupAsync(this.rgName);
                 var zoneName = this.zoneName;
                 var records = new List<DnsTxtRecordResource>();
                 var zones = (await response).Value.GetDnsZones();
+                var domain = DisectFqdn(fqdn);
                 foreach (var z in zones)
                 {
                     var zone = z.GetDnsTxtRecord(zoneName);
