@@ -13,16 +13,10 @@
             "stopAtEntry": false
         },
         {
-            "name": ".NET Core Attach",
+            "name": "Attach to .NET Functions",
             "type": "coreclr",
-            "request": "attach"
-        },
-        {
-            "name": "Attach to Python Functions",
-            "type": "python",
             "request": "attach",
-            "port": 9091,
-            "preLaunchTask": "func: host start"
+            "processId": "${command:azureFunctions.pickProcess}"
         }
     ]
 }

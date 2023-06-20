@@ -1,7 +1,8 @@
 {
-    "azureFunctions.deploySubpath": "DNSUpdater.Function",
+    "azureFunctions.deploySubpath": "DNSUpdater.Function/bin/Release/net6.0/publish",
     "azureFunctions.scmDoBuildDuringDeployment": true,
     "azureFunctions.projectLanguage": "C#",
     "azureFunctions.projectRuntime": "~4",
-    "debug.internalConsoleOptions": "neverOpen"
+    "debug.internalConsoleOptions": "neverOpen",
+    "azureFunctions.preDeployTask": "publish (functions)"
 }
