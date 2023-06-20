@@ -15,9 +15,9 @@ var logAnalyticsExternalId = logAnalyticsIds[environment]
 targetScope = 'resourceGroup'
 
 
-param keyVaultName string = 'kv-dyndns-${environment}'
+param keyVaultName string = 'kv-dns-txt-updater-${environment}'
 
-param applicationInsightsName string = 'appi-dyndns-${environment}'
+param applicationInsightsName string = 'appi-dns-txt-updater-${environment}'
 
 
 resource ai 'microsoft.insights/components@2020-02-02' = {

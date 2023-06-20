@@ -68,7 +68,7 @@ Add the following keys to your AppSettings.
 
 | Name | Value |
 |:-----|:------|
-| clientPassword | password for dyndns client |
-| clientUsername | username for dyndns client |
+| clientPassword | password for txt-record client |
+| clientUsername | username for txt-record client |
 | fqdn | Your domain name. must contain a subdomain |
 | resourceGroupName | Name of the resource group with the dynamic DNS |

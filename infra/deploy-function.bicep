@@ -29,7 +29,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2020-06-01' = {
 param appServicePlan string = 'asp-dns-txt-updater-${environment}'
 
 module webfarm './resources/webfarm.bicep' = {
-  name: 'webfarm-${environment}'
+  name: 'webfarm-dns-txt-updater-${environment}'
   params: {
     name: appServicePlan
     location: location
@@ -39,7 +39,7 @@ module webfarm './resources/webfarm.bicep' = {
 }
 
 module plan './resources/plan.bicep' = {
-  name: 'app-service-plan-${environment}'
+  name: 'app-service-plan-dns-txt-updater-${environment}'
   params: {
     environment: environment
     location: location
