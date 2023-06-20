@@ -1,6 +1,4 @@
-﻿using System.Net;
-using System.Text;
-using Azure;
+﻿using Azure;
 using Azure.ResourceManager.Dns;
 using Azure.ResourceManager.Dns.Models;
 using Azure.ResourceManager.Resources;
@@ -53,7 +51,7 @@ namespace DNSUpdater.Library.Services
             return false;
         }
 
-        public async Task<UpdateStatus> UpdateTXTRecord(string fqdn, string ip, int ttl)
+        public async Task<UpdateStatus> UpdateTXTRecord(string fqdn, string txtRecord, int ttl)
         {
             if (string.IsNullOrEmpty(this.rgName))
             {
@@ -65,6 +63,7 @@ namespace DNSUpdater.Library.Services
                 SetupZone();
             }
 
+            var domain = DisectFqdn(fqdn);
             try
             {
                 var response =  this.client.GetResourceGroupAsync(this.rgName);
@@ -74,22 +73,25 @@ namespace DNSUpdater.Library.Services
                 foreach (var z in zones)
                 {
                     var zone = z.GetDnsTxtRecord(zoneName);
-                    foreach (var Txtrecord in zone.Value.Get())
+                    var Txtrecord = zone.Value;
                     {
                         if (Txtrecord.Data.Name == fqdn)
                         {
-                            if (Txtrecord.Data.DnsTxtRecords.Any(ar => ar.IPv6Address.Equals(parsedIp)))
+                            if (Txtrecord.Data.DnsTxtRecords.Any(txt => txt.Values.Equals(txtRecord)))
                             {
-                                this.logger.LogInformation($"txt update not required. Domain: {domain.fqdn}, txt-record: {txtRecord}");
+                                this.logger.LogInformation($"txt update not required. Domain: {domain.fqdn}, TXT-record: {txtRecord}");
                                 return UpdateStatus.nochg;
                             }
 
-                            this.logger.LogInformation($"IP update. Domain: {domain.fqdn}, ip: {ip}");
+                            this.logger.LogInformation($"TXT update. Domain: {domain.fqdn}, txt-record: {txtRecord}");
 
-                            var TxtrecordData = new DnsTxtRecordData() { TtlInSeconds = ttl };
-                            TxtrecordData.DnsTxtRecords.Clear();
-                            TxtrecordData.DnsTxtRecords.Add(new DnsTxtRecordInfo() { IPv6Address = parsedIp });
-                            Txtrecord.Update(TxtrecordData);
+                            var info = new DnsTxtRecordInfo();
+                            info.Values.Add(txtRecord);
+
+                            var txtRecordData = new DnsTxtRecordData() { TtlInSeconds = ttl };
+                            txtRecordData.DnsTxtRecords.Clear();
+                            txtRecordData.DnsTxtRecords.Add(info);
+                            Txtrecord.Update(txtRecordData);
                             return UpdateStatus.good;
                         }
                     }
@@ -99,7 +101,7 @@ namespace DNSUpdater.Library.Services
             }
             catch (ApplicationException e)
             {
-                this.logger.LogError(e, $"Failed to parse fqdn. Domain: {fqdn}, ipv6: {ip}");
+                this.logger.LogError(e, $"Failed to parse fqdn. Domain: {fqdn}, TXT-record: {txtRecord}");
                 return UpdateStatus.notfqdn;
             }
             catch (Exception e)

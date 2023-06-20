@@ -50,13 +50,13 @@ namespace DNSUpdater.Function
             {
                 if (Array.IndexOf(validKeys,queryParameter.Key) == -1)
                 {
-                    this.logger.LogWarning($"Query parameter: {queryParameter.Key} is invalid");
+                    this.logger.LogWarning($"Query parameter is invalid");
                     return new BadRequestResult();
                 }
             }
 
             if (string.IsNullOrWhiteSpace(hostname) ||
-                (string.IsNullOrWhiteSpace(txtRecord) ||
+                string.IsNullOrWhiteSpace(txtRecord) ||
                 string.IsNullOrWhiteSpace(token) ||
                 string.IsNullOrWhiteSpace(agent))
             {
