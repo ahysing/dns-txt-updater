@@ -1,0 +1,11 @@
+{
+    "IsEncrypted": false,
+    "Values": {
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+        "resourceGroupName": "rg-domain-test",
+        "fqdn": "_acme-challenge.oldmacblog.com",
+        "clientUsername": "andreashysing",
+        "clientPassword": "myfancypassword"
+    }
+}
