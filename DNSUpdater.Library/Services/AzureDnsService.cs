@@ -51,67 +51,6 @@ namespace DNSUpdater.Library.Services
             return false;
         }
 
-        public async Task<UpdateStatus> UpdateTXTRecord(string fqdn, string txtRecord, int ttl)
-        {
-            if (string.IsNullOrEmpty(this.rgName))
-            {
-                SetupRgName();
-            }
-
-            if (string.IsNullOrEmpty(this.zoneName))
-            {
-                SetupZone();
-            }
-
-            try
-            {
-                var response =  this.client.GetResourceGroupAsync(this.rgName);
-                var zoneName = this.zoneName;
-                var records = new List<DnsTxtRecordResource>();
-                var zones = (await response).Value.GetDnsZones();
-                var domain = DisectFqdn(fqdn);
-                foreach (var z in zones)
-                {
-                    var zone = z.GetDnsTxtRecord(zoneName);
-                    var Txtrecord = zone.Value;
-                    {
-                        if (Txtrecord.Data.Name == fqdn)
-                        {
-                            if (Txtrecord.Data.DnsTxtRecords.Any(txt => txt.Values.Equals(txtRecord)))
-                            {
-                                this.logger.LogInformation($"txt update not required. Domain: {domain.fqdn}, TXT-record: {txtRecord}");
-                                return UpdateStatus.nochg;
-                            }
-
-                            this.logger.LogInformation($"TXT update. Domain: {domain.fqdn}, txt-record: {txtRecord}");
-
-                            var info = new DnsTxtRecordInfo();
-                            info.Values.Add(txtRecord);
-
-                            var txtRecordData = new DnsTxtRecordData() { TtlInSeconds = ttl };
-                            txtRecordData.DnsTxtRecords.Clear();
-                            txtRecordData.DnsTxtRecords.Add(info);
-                            Txtrecord.Update(txtRecordData);
-                            return UpdateStatus.good;
-                        }
-                    }
-                }
-
-                return UpdateStatus.nohost;
-            }
-            catch (ApplicationException e)
-            {
-                this.logger.LogError(e, $"Failed to parse fqdn. Domain: {fqdn}, TXT-record: {txtRecord}");
-                return UpdateStatus.notfqdn;
-            }
-            catch (Exception e)
-            {
-                this.logger.LogError(e, "Fail to update domain");
-            }
-
-            return UpdateStatus.othererr;
-        }
-
         private void SetupRgName()
         {
             try {
@@ -167,6 +106,120 @@ namespace DNSUpdater.Library.Services
             }
 
             return false;
+        }
+
+
+        public async Task<UpdateStatus> UpdateTXTRecord(string fqdn, string txtRecord, int ttl)
+        {
+            if (string.IsNullOrEmpty(this.rgName))
+            {
+                SetupRgName();
+            }
+
+            if (string.IsNullOrEmpty(this.zoneName))
+            {
+                SetupZone();
+            }
+
+            try
+            {
+                var response =  this.client.GetResourceGroupAsync(this.rgName);
+                var zoneName = this.zoneName;
+                var records = new List<DnsTxtRecordResource>();
+                var zones = (await response).Value.GetDnsZones();
+                var domain = DisectFqdn(fqdn);
+                foreach (var z in zones)
+                {
+                    var zone = z.GetDnsTxtRecord(zoneName);
+                    var Txtrecord = zone.Value;
+                    {
+                        if (Txtrecord.Data.Name == fqdn)
+                        {
+                            if (Txtrecord.Data.DnsTxtRecords.Any(txt => txt.Values.Equals(txtRecord)))
+                            {
+                                return UpdateStatus.nochg;
+                            }
+
+                            var info = new DnsTxtRecordInfo();
+                            info.Values.Add(txtRecord);
+
+                            var txtRecordData = new DnsTxtRecordData() { TtlInSeconds = ttl };
+                            txtRecordData.DnsTxtRecords.Clear();
+                            txtRecordData.DnsTxtRecords.Add(info);
+                            Txtrecord.Update(txtRecordData);
+                            return UpdateStatus.good;
+                        }
+                    }
+                }
+
+                return UpdateStatus.nohost;
+            }
+            catch (ApplicationException e)
+            {
+                this.logger.LogError(e, $"Failed to parse fqdn. Domain: {fqdn}, TXT-record: {txtRecord}");
+                return UpdateStatus.notfqdn;
+            }
+            catch (Exception e)
+            {
+                this.logger.LogError(e, "Fail to update domain");
+            }
+
+            return UpdateStatus.othererr;
+        }
+
+
+        public async Task<UpdateStatus> DeleteTXTRecord(string fqdn, string txtRecord)
+        {
+            if (string.IsNullOrEmpty(this.rgName))
+            {
+                SetupRgName();
+            }
+
+            if (string.IsNullOrEmpty(this.zoneName))
+            {
+                SetupZone();
+            }
+
+            try
+            {
+                var response =  this.client.GetResourceGroupAsync(this.rgName);
+                var zoneName = this.zoneName;
+                var records = new List<DnsTxtRecordResource>();
+                var zones = (await response).Value.GetDnsZones();
+                var domain = DisectFqdn(fqdn);
+                foreach (var z in zones)
+                {
+                    var zone = z.GetDnsTxtRecord(zoneName);
+                    var Txtrecord = zone.Value;
+                    {
+                        if (Txtrecord.Data.Name == fqdn)
+                        {
+                            if (Txtrecord.Data.DnsTxtRecords.Any(txt => txt.Values.Equals(txtRecord)))
+                            {
+                                return UpdateStatus.nochg;
+                            }
+
+                            var txtRecordData = new DnsTxtRecordData();
+                            txtRecordData.DnsTxtRecords.Clear();
+                            Txtrecord.Update(txtRecordData);
+                            return UpdateStatus.good;
+                        }
+                    }
+                }
+
+                return UpdateStatus.nohost;
+            }
+            catch (ApplicationException e)
+            {
+                this.logger.LogError(e, $"Failed to parse fqdn. Domain: {fqdn}, TXT-record: {txtRecord}");
+                return UpdateStatus.notfqdn;
+            }
+            catch (Exception e)
+            {
+                this.logger.LogError(e, "Fail to update domain");
+            }
+
+            return UpdateStatus.othererr;
         }
     }
 }

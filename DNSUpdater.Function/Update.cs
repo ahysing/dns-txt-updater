@@ -32,32 +32,20 @@ namespace DNSUpdater.Function
                 throw new ArgumentOutOfRangeException("Authorization", "Authorization section is empty in configuration file");
             }
         }
-
-
-        [FunctionName("update")]
-        public async Task<IActionResult> RunAsync(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)]
-            HttpRequest req)
+        private BadRequestObjectResult Validate(HttpRequest req, string hostname, string txtRecord, string system, string agent)
         {
-            int ttl = 3600;
-            string agent = req.Headers["User-Agent"];
-            string hostname = req.Query["hostname"];
-            string txtRecord = req.Query["txt"];
-            string system = req.Query["system"];
-            string token = req.Headers["Authorization"]; //For "Basic" authentication the credentials are constructed by first combining the username and the password with a colon (aladdin:opensesame), and then by encoding the resulting string in base64 (YWxhZGRpbjpvcGVuc2VzYW1l).
-
             foreach (var queryParameter in req.Query)
             {
-                if (Array.IndexOf(validKeys,queryParameter.Key) == -1)
+                if (Array.IndexOf(validKeys, queryParameter.Key) == -1)
                 {
                     this.logger.LogWarning($"Query parameter is invalid");
-                    return new BadRequestResult();
+                    return new BadRequestObjectResult(queryParameter.Key);
                 }
             }
 
             if (string.IsNullOrWhiteSpace(hostname) ||
                 string.IsNullOrWhiteSpace(txtRecord) ||
-                string.IsNullOrWhiteSpace(token) ||
+                string.IsNullOrWhiteSpace(system) ||
                 string.IsNullOrWhiteSpace(agent))
             {
                 if (string.IsNullOrWhiteSpace(hostname))
@@ -82,6 +70,26 @@ namespace DNSUpdater.Function
 
                 return new BadRequestObjectResult(UpdateStatus.othererr.ToString());
             }
+            return null;
+        }
+
+        [FunctionName("update")]
+        public async Task<IActionResult> RunAsync(
+            [HttpTrigger(AuthorizationLevel.Anonymous, new string[] {"get", "delete"}, Route = null)]
+            HttpRequest req)
+        {
+            int ttl = 3600;
+            string agent = req.Headers["User-Agent"];
+            string hostname = req.Query["hostname"];
+            string txtRecord = req.Query["txt"];
+            string system = req.Query["system"];
+            string token = req.Headers["Authorization"]; //For "Basic" authentication the credentials are constructed by first combining the username and the password with a colon (aladdin:opensesame), and then by encoding the resulting string in base64 (YWxhZGRpbjpvcGVuc2VzYW1l).
+
+            var response = Validate(req, hostname, txtRecord, system, agent);
+            if (response != null)
+            {
+                return response;
+            }
 
             this.logger.LogDebug(
                 $"request details:	hostname: {hostname}	txt: {txtRecord}	token: {token}	agent: {agent}	system: {system}");
@@ -99,8 +107,10 @@ namespace DNSUpdater.Function
                 UpdateStatus resulterTxt = UpdateStatus.nochg;
                 if (!string.IsNullOrWhiteSpace(txtRecord))
                 {
-                    logger.LogInformation($"Updating txt: {hostname}\ttxt: {txtRecord}");
                     var result = await this.service.UpdateTXTRecord(hostname, txtRecord, ttl);
+                    resulterTxt = result;
+                } else {
+                    var result = await this.service.DeleteTXTRecord(hostname, txtRecord);
                     resulterTxt = result;
                 }
 
