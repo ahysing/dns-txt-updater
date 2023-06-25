@@ -91,9 +91,6 @@ namespace DNSUpdater.Function
                 return response;
             }
 
-            this.logger.LogDebug(
-                $"request details:	hostname: {hostname}	txt: {txtRecord}	token: {token}	agent: {agent}	system: {system}");
-
             token = token.Replace("Basic ", "");
             if (!tokenList.Contains(token))
             {
