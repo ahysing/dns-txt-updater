@@ -102,25 +102,30 @@ namespace DNSUpdater.Function
             try
             {
                 UpdateStatus resulterTxt = UpdateStatus.nochg;
-                if (!string.IsNullOrWhiteSpace(txtRecord))
+                switch (req.Method)
                 {
-                    var result = await this.service.UpdateTXTRecord(hostname, txtRecord, ttl);
-                    resulterTxt = result;
-                } else {
-                    var result = await this.service.DeleteTXTRecord(hostname, txtRecord);
-                    resulterTxt = result;
+                    case "get":
+                        resulterTxt = await this.service.UpdateTXTRecord(hostname, txtRecord, ttl);
+                        break;
+                    case "delete":
+                        resulterTxt = await this.service.DeleteTXTRecord(hostname, txtRecord);
+                        break;
                 }
 
-                if (resulterTxt  == UpdateStatus.good)
+                switch (resulterTxt)
                 {
-                    return new OkObjectResult(UpdateStatus.good.ToString());
-                } else {
-                    return new ConflictObjectResult(resulterTxt.ToString());
+                    case UpdateStatus.nochg:
+                    case UpdateStatus.good:
+                        return new OkObjectResult(resulterTxt.ToString());
+                    case UpdateStatus.nohost:
+                        return new NotFoundObjectResult(resulterTxt.ToString());
+                    default:
+                        return new ConflictObjectResult(resulterTxt.ToString());
                 }
             }
             catch (Exception e)
             {
-                this.logger.LogError(e, "Exception thrown");
+                this.logger.LogError(e, "Failed updating DNS TXT-record");
                 return new InternalServerErrorResult();
             }
         }
