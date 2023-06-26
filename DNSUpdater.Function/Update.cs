@@ -70,6 +70,7 @@ namespace DNSUpdater.Function
 
                 return new BadRequestObjectResult(UpdateStatus.othererr.ToString());
             }
+
             return null;
         }
 
@@ -83,12 +84,12 @@ namespace DNSUpdater.Function
             string hostname = req.Query["hostname"];
             string txtRecord = req.Query["txt"];
             string system = req.Query["system"];
+
             string token = req.Headers["Authorization"]; //For "Basic" authentication the credentials are constructed by first combining the username and the password with a colon (aladdin:opensesame), and then by encoding the resulting string in base64 (YWxhZGRpbjpvcGVuc2VzYW1l).
 
-            var response = Validate(req, hostname, txtRecord, system, agent);
-            if (response != null)
+            if (string.IsNullOrEmpty(token))
             {
-                return response;
+                return new ForbidResult();
             }
 
             token = token.Replace("Basic ", "");
@@ -99,16 +100,32 @@ namespace DNSUpdater.Function
                 return new ObjectResult(UpdateStatus.badauth.ToString()) { StatusCode = 401 };
             }
 
+            logger.LogInformation("Passed validation of basic auth");
+
+
+            var response = Validate(req, hostname, txtRecord, system, agent);
+            if (response != null)
+            {
+                return response;
+            }
+
+            logger.LogInformation("Passed validation of query parameters");
+
+
             try
             {
                 UpdateStatus resulterTxt = UpdateStatus.nochg;
                 switch (req.Method)
                 {
-                    case "get":
+                    case "GET":
                         resulterTxt = await this.service.UpdateTXTRecord(hostname, txtRecord, ttl);
                         break;
-                    case "delete":
+                    case "DELETE":
                         resulterTxt = await this.service.DeleteTXTRecord(hostname, txtRecord);
+                        break;
+                    default:
+                        logger.LogError("Failed request method {0}", req.Method);
+                        resulterTxt = UpdateStatus.othererr;
                         break;
                 }
 
@@ -118,8 +135,10 @@ namespace DNSUpdater.Function
                     case UpdateStatus.good:
                         return new OkObjectResult(resulterTxt.ToString());
                     case UpdateStatus.nohost:
+                    case UpdateStatus.notfqdn:
                         return new NotFoundObjectResult(resulterTxt.ToString());
                     default:
+                        logger.LogError("Failed response status {0}", resulterTxt.ToString());
                         return new ConflictObjectResult(resulterTxt.ToString());
                 }
             }

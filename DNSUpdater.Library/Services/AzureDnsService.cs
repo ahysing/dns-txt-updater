@@ -1,6 +1,5 @@
 ﻿using Azure;
 using Azure.ResourceManager.Dns;
-using Azure.ResourceManager.Dns.Models;
 using Azure.ResourceManager.Resources;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -74,7 +73,7 @@ namespace DNSUpdater.Library.Services
 
         private Domain DisectFqdn(string fqdn)
         {
-            if (Uri.CheckHostName(fqdn) != UriHostNameType.Dns)
+            if (!Uri.IsWellFormedUriString(fqdn, UriKind.RelativeOrAbsolute))
             {
                 throw new ApplicationException($"{fqdn} is not a valid domain");
             }
@@ -87,7 +86,12 @@ namespace DNSUpdater.Library.Services
 
             var domain = $"{parts[^2]}.{parts[^1]}";
             var subdomain = fqdn.Replace("." + domain, "");
-            return new Domain { domain = domain, fqdn = fqdn, subdomain = subdomain };
+            return new Domain
+            {
+                domain = domain,
+                fqdn = fqdn,
+                subdomain = subdomain
+            };
         }
 
         private async Task<bool> HasRecordSet(Domain domain)
@@ -121,6 +125,7 @@ namespace DNSUpdater.Library.Services
                 SetupZone();
             }
 
+            this.logger.LogInformation("Update TXT-record");
             try
             {
                 var response =  this.client.GetResourceGroupAsync(this.rgName);
@@ -128,28 +133,45 @@ namespace DNSUpdater.Library.Services
                 var records = new List<DnsTxtRecordResource>();
                 var zones = (await response).Value.GetDnsZones();
                 var domain = DisectFqdn(fqdn);
-                foreach (var z in zones)
+                foreach (var zone in zones)
                 {
-                    var zone = z.GetDnsTxtRecord(zoneName);
-                    var Txtrecord = zone.Value;
+                    this.logger.LogDebug($"zone: {zone.Data.Name}");
+                    foreach (var dnsTxtRecordResource in zone.GetDnsTxtRecords())
                     {
-                        if (Txtrecord.Data.Name == fqdn)
+                        if (dnsTxtRecordResource.Data.Name == domain.subdomain)
                         {
-                            if (Txtrecord.Data.DnsTxtRecords.Any(txt => txt.Values.Equals(txtRecord)))
+                            if (dnsTxtRecordResource.Data.DnsTxtRecords.Any(txt => txt.Values.Equals(txtRecord)))
                             {
+                                this.logger.LogDebug($"TXT-record {domain.subdomain}: {txtRecord} already exists. Skipping");
                                 return UpdateStatus.nochg;
                             }
 
-                            var info = new DnsTxtRecordInfo();
-                            info.Values.Add(txtRecord);
-
-                            var txtRecordData = new DnsTxtRecordData() { TtlInSeconds = ttl };
-                            txtRecordData.DnsTxtRecords.Clear();
-                            txtRecordData.DnsTxtRecords.Add(info);
-                            Txtrecord.Update(txtRecordData);
+                            this.logger.LogDebug($"TXT-record {domain.subdomain}: {txtRecord}");
+                            var txtRecordData = new DnsTxtRecordData()
+                            {
+                                TtlInSeconds = ttl,
+                                Metadata = {
+                                    [domain.subdomain] = txtRecord
+                                }
+                            };
+                            // https://github.com/thomhurst/azure-sdk-for-net/blob/3bfd7ba3dc94af7e4d2aba8a6a4661c0b6729c66/sdk/dns/Azure.ResourceManager.Dns/samples/Generated/Samples/Sample_DnsTxtRecordResource.cs#L18
+                            DnsTxtRecordResource result = await dnsTxtRecordResource.UpdateAsync(txtRecordData);
                             return UpdateStatus.good;
+                        } else {
+                            this.logger.LogDebug($"Skipping {dnsTxtRecordResource.Data.Name}");
                         }
                     }
+
+                    this.logger.LogDebug($"Creating TXT-record {domain.subdomain}: {txtRecord}");
+                    var patch = new Azure.ResourceManager.Dns.Models.DnsZonePatch()
+                    {
+                        Tags = {
+                            [domain.subdomain] = txtRecord
+                        }
+                    };
+
+                    zone.Update(patch);
+                    return UpdateStatus.good;
                 }
 
                 return UpdateStatus.nohost;
@@ -180,6 +202,7 @@ namespace DNSUpdater.Library.Services
                 SetupZone();
             }
 
+            logger.LogInformation("Update TXT-record");
             try
             {
                 var response =  this.client.GetResourceGroupAsync(this.rgName);
@@ -187,21 +210,21 @@ namespace DNSUpdater.Library.Services
                 var records = new List<DnsTxtRecordResource>();
                 var zones = (await response).Value.GetDnsZones();
                 var domain = DisectFqdn(fqdn);
-                foreach (var z in zones)
+                foreach (var zone in zones)
                 {
-                    var zone = z.GetDnsTxtRecord(zoneName);
-                    var Txtrecord = zone.Value;
+                    var dnsTxtRecordResourceReponse = zone.GetDnsTxtRecord(zoneName);
+                    var dnsTxtRecordResource = dnsTxtRecordResourceReponse.Value;
                     {
-                        if (Txtrecord.Data.Name == fqdn)
+                        if (dnsTxtRecordResource.Data.Name == fqdn)
                         {
-                            if (Txtrecord.Data.DnsTxtRecords.Any(txt => txt.Values.Equals(txtRecord)))
+                            if (dnsTxtRecordResource.Data.DnsTxtRecords.Any(txt => txt.Values.Equals(txtRecord)))
                             {
                                 return UpdateStatus.nochg;
                             }
 
                             var txtRecordData = new DnsTxtRecordData();
                             txtRecordData.DnsTxtRecords.Clear();
-                            Txtrecord.Update(txtRecordData);
+                            dnsTxtRecordResource.Update(txtRecordData);
                             return UpdateStatus.good;
                         }
                     }
