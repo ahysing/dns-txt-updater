@@ -79,7 +79,6 @@ namespace DNSUpdater.Library.Services
             }
 
             var parts = fqdn.Split(".");
-            this.logger.LogDebug($"parts {string.Join(", ", parts)}");
             if (parts.Length <= 2)
             {
                 throw new ApplicationException($"{fqdn} does not contain a subdomain");
@@ -139,7 +138,8 @@ namespace DNSUpdater.Library.Services
                     this.logger.LogDebug($"zone {zone.Data.Name}");
                     if (zone.Data.Name == domain.domain)
                     {
-                        foreach (var dnsTxtRecordResource in zone.GetDnsTxtRecords())
+                        var txtCollection = zone.GetDnsTxtRecords();
+                        foreach (var dnsTxtRecordResource in txtCollection)
                         {
                             this.logger.LogDebug($"zone name {dnsTxtRecordResource.Data.Name}");
                             if (dnsTxtRecordResource.Data.Name == domain.subdomain)
@@ -167,14 +167,14 @@ namespace DNSUpdater.Library.Services
                         }
 
                         this.logger.LogDebug($"Creating TXT-record {domain.subdomain}: {txtRecord}");
-                        var patch = new Azure.ResourceManager.Dns.Models.DnsZonePatch()
+                        DnsTxtRecordData newTx = new DnsTxtRecordData()
                         {
-                            Tags = {
-                                [domain.subdomain] = txtRecord
-                            }
+                            TtlInSeconds = ttl
                         };
-
-                        zone.Update(patch);
+                        var info = new Azure.ResourceManager.Dns.Models.DnsTxtRecordInfo();
+                        info.Values.Add(txtRecord);
+                        newTx.DnsTxtRecords.Add(info);
+                        await txtCollection.CreateOrUpdateAsync(WaitUntil.Completed, domain.subdomain, newTx);
                         return UpdateStatus.good;
                     }
                 }
@@ -193,7 +193,6 @@ namespace DNSUpdater.Library.Services
 
             return UpdateStatus.othererr;
         }
-
 
         public async Task<UpdateStatus> DeleteTXTRecord(string fqdn, string txtRecord)
         {
