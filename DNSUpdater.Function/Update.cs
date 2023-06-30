@@ -6,11 +6,10 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text;
-
-using System.Web.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
+using System.Web.Http;
 
 namespace DNSUpdater.Function
 {
@@ -32,7 +31,7 @@ namespace DNSUpdater.Function
                 throw new ArgumentOutOfRangeException("Authorization", "Authorization section is empty in configuration file");
             }
         }
-        private BadRequestObjectResult Validate(HttpRequest req, string hostname, string txtRecord, string system, string agent)
+        private BadRequestObjectResult ValidateUpsert(HttpRequest req, string hostname, string txtRecord, string agent)
         {
             foreach (var queryParameter in req.Query)
             {
@@ -45,7 +44,6 @@ namespace DNSUpdater.Function
 
             if (string.IsNullOrWhiteSpace(hostname) ||
                 string.IsNullOrWhiteSpace(txtRecord) ||
-                string.IsNullOrWhiteSpace(system) ||
                 string.IsNullOrWhiteSpace(agent))
             {
                 if (string.IsNullOrWhiteSpace(hostname))
@@ -58,9 +56,34 @@ namespace DNSUpdater.Function
                     logger.LogWarning("Query parameter \"txt\" are empty.");
                 }
 
-                if (string.IsNullOrWhiteSpace(system))
+                if (string.IsNullOrWhiteSpace(agent))
                 {
-                    logger.LogWarning("Query parameter \"system\" is empty.");
+                    logger.LogWarning("Request header \"User-Agent\" is empty.");
+                }
+
+                return new BadRequestObjectResult(UpdateStatus.othererr.ToString());
+            }
+
+            return null;
+        }
+
+        private BadRequestObjectResult ValidateDelete(HttpRequest req, string hostname, string agent)
+        {
+            foreach (var queryParameter in req.Query)
+            {
+                if (Array.IndexOf(validKeys, queryParameter.Key) == -1)
+                {
+                    this.logger.LogWarning($"Query parameter is invalid");
+                    return new BadRequestObjectResult(queryParameter.Key);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(hostname) ||
+                string.IsNullOrWhiteSpace(agent))
+            {
+                if (string.IsNullOrWhiteSpace(hostname))
+                {
+                    logger.LogWarning("Query parameter \"hostname\" is empty.");
                 }
 
                 if (string.IsNullOrWhiteSpace(agent))
@@ -101,9 +124,19 @@ namespace DNSUpdater.Function
             }
 
             logger.LogInformation("Passed validation of basic auth");
+            BadRequestObjectResult response = null;
+            switch (req.Method)
+            {
+                case "GET":
+                    response = ValidateUpsert(req, hostname, txtRecord, agent);
+                    break;
+                case "DELETE":
+                    response = ValidateDelete(req, hostname, agent);
+                    break;
+                default:
+                    break;
+            }
 
-
-            var response = Validate(req, hostname, txtRecord, system, agent);
             if (response != null)
             {
                 return response;
@@ -131,9 +164,10 @@ namespace DNSUpdater.Function
 
                 switch (resulterTxt)
                 {
-                    case UpdateStatus.nochg:
                     case UpdateStatus.good:
                         return new OkObjectResult(resulterTxt.ToString());
+                    case UpdateStatus.nochg:
+                        return new NoContentResult();
                     case UpdateStatus.nohost:
                     case UpdateStatus.notfqdn:
                         return new NotFoundObjectResult(resulterTxt.ToString());
