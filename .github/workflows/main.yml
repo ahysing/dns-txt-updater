@@ -17,8 +17,8 @@ permissions:
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: './DNSUpdater.Function' # set this to the path to your web app project, defaults to the repository root
   DOTNET_VERSION: '6.0.x' # set this to the dotnet version to use
-  FUNCTION_APP: func-dyndns-test
-  RESOURCE_GROUP: rg-dyndns-test
+  FUNCTION_APP: func-dns-txt-updater-test
+  RESOURCE_GROUP: rg-dns-txt-updater-test
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
