@@ -19,6 +19,7 @@ env:
   DOTNET_VERSION: '6.0.x' # set this to the dotnet version to use
   FUNCTION_APP: func-dns-txt-updater-test
   RESOURCE_GROUP: rg-dns-txt-updater-test
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -37,6 +38,7 @@ jobs:
         run: |
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
           dotnet publish --configuration Release /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary --output ./output/
+          zip -r ./output/Function.zip ./output/*
           popd
 
       - name: Azure Login
@@ -67,7 +69,7 @@ jobs:
               -g ${{ env.RESOURCE_GROUP }} \
               -n ${{ env.FUNCTION_APP }} \
               --verbose \
-              --src ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output/
+              --src ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output/Function.zip
   
       - name: Close firewall
         uses: Azure/cli@v1.0.7
