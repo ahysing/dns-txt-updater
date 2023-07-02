@@ -19,6 +19,7 @@ env:
   DOTNET_VERSION: '6.0.x' # set this to the dotnet version to use
   FUNCTION_APP: func-dns-txt-updater-test
   RESOURCE_GROUP: rg-dns-txt-updater-test
+  FUNCTIONS_EXTENSION_VERSION: ~4
 
 jobs:
   build-and-deploy:
@@ -70,6 +71,11 @@ jobs:
         with:
           # Specify the script here
           inlineScript: |
+            az functionapp config appsettings set \
+              -g ${{ env.RESOURCE_GROUP }} \
+              -n ${{ env.FUNCTION_APP }} \
+              --settings FUNCTIONS_EXTENSION_VERSION=${{ env.FUNCTIONS_EXTENSION_VERSION }}
+              
             az functionapp deployment source config-zip \
               -g ${{ env.RESOURCE_GROUP }} \
               -n ${{ env.FUNCTION_APP }} \
