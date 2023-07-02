@@ -150,7 +150,7 @@ namespace DNSUpdater.Library.Services
                                     return UpdateStatus.nochg;
                                 }
 
-                                this.logger.LogDebug($"TXT-record {domain.subdomain}: {txtRecord}");
+                                this.logger.LogDebug($"Updating TXT-record {domain.subdomain}: {txtRecord}");
                                 var txtRecordData = new DnsTxtRecordData()
                                 {
                                     TtlInSeconds = ttl,
@@ -166,7 +166,7 @@ namespace DNSUpdater.Library.Services
                             }
                         }
 
-                        this.logger.LogDebug($"Creating TXT-record {domain.subdomain}: {txtRecord}");
+                        this.logger.LogInformation($"Creating TXT-record {domain.subdomain}: {txtRecord}");
                         DnsTxtRecordData newTx = new DnsTxtRecordData()
                         {
                             TtlInSeconds = ttl
@@ -226,6 +226,7 @@ namespace DNSUpdater.Library.Services
                             {
                                 if (string.IsNullOrEmpty(txtRecord) || dnsTxtRecordResource.Data.DnsTxtRecords.Any(txt => txt.Values.Equals(txtRecord)))
                                 {
+                                    this.logger.LogInformation($"Deleting TXT-record {domain.subdomain}: {txtRecord}");
                                     await dnsTxtRecordResource.DeleteAsync(WaitUntil.Started);
                                     return UpdateStatus.good;
                                 }

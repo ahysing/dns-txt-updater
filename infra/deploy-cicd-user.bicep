@@ -17,7 +17,7 @@ var tags = {
 }
 
 resource mi 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'id-githubactions-${environment}'
+  name: 'id-dns-txt-updater-cicd-${environment}'
   location: location
   tags: tags
 }

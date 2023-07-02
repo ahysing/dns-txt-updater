@@ -25,3 +25,4 @@ az deployment group create --template-file deploy-cicd-user.bicep --parameters e
 ```
 
 Finish off by reating the access rights as described in [Use GitHub Actions with User-Assigned Managed Identity](https://yourazurecoach.com/2022/12/29/use-github-actions-with-user-assigned-managed-identity/)
+az deployment group create --template-file deploy-cicd-user.bicep --name deploy-cicd-user-dns-txt-updater -g rg-dns-txt-updater-test
