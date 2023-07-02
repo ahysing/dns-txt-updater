@@ -38,7 +38,12 @@ jobs:
         run: |
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
           dotnet publish --configuration Release /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary --output ./output/
-          zip -r ./output/Function.zip ./output/*
+          
+          pushd ./output/
+          zip -r ./Function.zip .
+          ls
+          popd
+          
           popd
 
       - name: Azure Login
