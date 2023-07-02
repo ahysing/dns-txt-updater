@@ -44,7 +44,7 @@ namespace DNSUpdater.Library.Services
             }
             catch (Exception e)
             {
-                this.logger.LogError(e, "Failed to find domain");
+                this.logger.LogError(e, $"Failed to find domain. {e.Message}");
             }
 
             return false;
@@ -188,7 +188,7 @@ namespace DNSUpdater.Library.Services
             }
             catch (Exception e)
             {
-                this.logger.LogError(e, "Fail to update domain");
+                this.logger.LogError(e, $"Fail to update domain. {e.GetType().Name} {e.Message}");
             }
 
             return UpdateStatus.othererr;
@@ -249,7 +249,7 @@ namespace DNSUpdater.Library.Services
             }
             catch (Exception e)
             {
-                this.logger.LogError(e, "Fail to update domain");
+                this.logger.LogError(e, $"Fail to update domain. {e.GetType().Name} {e.Message}");
             }
 
             return UpdateStatus.othererr;

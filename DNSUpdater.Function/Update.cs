@@ -178,7 +178,7 @@ namespace DNSUpdater.Function
             }
             catch (Exception e)
             {
-                this.logger.LogError(e, "Failed updating DNS TXT-record");
+                this.logger.LogError(e, $"Failed updating DNS TXT-record. {e.Message}");
                 return new InternalServerErrorResult();
             }
         }
