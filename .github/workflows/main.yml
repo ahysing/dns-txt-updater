@@ -1,0 +1,90 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy dotnet core project to Azure Function App - azure-dns-updater
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './DNSUpdater.Function' # set this to the path to your web app project, defaults to the repository root
+  DOTNET_VERSION: '6.0.x' # set this to the dotnet version to use
+  FUNCTION_APP: func-dns-txt-updater-test
+  RESOURCE_GROUP: rg-dns-txt-updater-test
+  FUNCTIONS_EXTENSION_VERSION: ~4
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-22.04
+    environment: test
+    steps:
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v2
+
+      - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 'Resolve Project Dependencies Using Dotnet'
+        shell: bash
+        run: |
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          dotnet publish --configuration Release /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary --output ./output/
+          
+          pushd ./output/
+          zip -r ./Function.zip .
+          ls
+          popd
+          
+          popd
+
+      - name: Azure Login
+        uses: Azure/login@v1.4.6
+        with:
+          # Paste output of `az ad sp create-for-rbac` as value of secret variable: AZURE_CREDENTIALS
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          # Azure subscriptionId
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Open firewall
+        uses: Azure/cli@v1.0.7
+        with:
+          # Specify the script here
+          inlineScript: 
+            az account set -s '${{ secrets.AZURE_SUBSCRIPTION_ID }}';
+            az account show;
+            az functionapp list --query '[].id';
+            # az functionapp config access-restriction add -g ${{ env.RESOURCE_GROUP }} -n ${{ env.FUNCTION_APP }} --scm-site true --rule-name AllowAzureCloud --service-tag AzureCloud --priority 300 --action Allow -o none
+      
+      - name: 'Deploy Azure Function'
+        uses: Azure/cli@v1.0.7
+        with:
+          # Specify the script here
+          inlineScript: |
+            az functionapp config appsettings set \
+              -g ${{ env.RESOURCE_GROUP }} \
+              -n ${{ env.FUNCTION_APP }} \
+              --settings FUNCTIONS_EXTENSION_VERSION=${{ env.FUNCTIONS_EXTENSION_VERSION }}
+              
+            az functionapp deployment source config-zip \
+              -g ${{ env.RESOURCE_GROUP }} \
+              -n ${{ env.FUNCTION_APP }} \
+              --src ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output/Function.zip
+  
+      - name: Close firewall
+        uses: Azure/cli@v1.0.7
+        with:
+          # Specify the script here
+          inlineScript:
+            az account set -s '${{ secrets.AZURE_SUBSCRIPTION_ID }}';
+            # az functionapp config access-restriction remove -g ${{ env.RESOURCE_GROUP }} -n ${{ env.FUNCTION_APP }} --scm-site true --rule-name AllowAzureCloud --service-tag AzureCloud --priority 300 --action Allow -o none
