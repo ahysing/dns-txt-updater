@@ -22,7 +22,7 @@ env:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     environment: test
     steps:
       - name: 'Checkout GitHub Action'
@@ -73,7 +73,6 @@ jobs:
             az functionapp deployment source config-zip \
               -g ${{ env.RESOURCE_GROUP }} \
               -n ${{ env.FUNCTION_APP }} \
-              --verbose \
               --src ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output/Function.zip
   
       - name: Close firewall
